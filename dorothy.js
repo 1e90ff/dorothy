@@ -1,135 +1,148 @@
 (function () {
 	'use strict';
 
-	var _data     = '';
-	var _view     = {};
-	var _stack    = [];
-	var _isReady  = false;
-	var _isMobile = false;
+	/**
+	 * Blog data
+	 * @type {BlogData}
+	 */
+	var _data = null;
 
-	function _isTypeOf(data, type) {
-		return data !== null && typeof data === type;
-	}
-
-	function _stripTags(str) {
-		var    node           = document.createElement('i');
-		       node.innerHTML = str.replace(/<\/?[^<>]*>/g, '');
-		return node.innerText;
-	}
-
-	function _eval(item) {
-		var cond   = item.rule === '';
-		var params = item.rule.split('|');
-
-		if (!cond) {
-			params.forEach(function(param) {
-				cond = cond || _view[param];
-			});
-		}
-
-		if (cond && (item.mobile || !_isMobile)) {
-			item.callback(JSON.parse(_data));
-		}
-	}
-
-	function _map(args) {
-		var item     = null;
-		var rule     = args[0];
-		var mobile   = args[2];
-		var callback = args[1];
-
-		if (_isTypeOf(callback, 'function')) {
-			item = {
-				rule:     '',
-				mobile:   true,
-				callback: callback
-			};
-
-			if (_isTypeOf(rule, 'string')) {
-				item.rule = rule.toUpperCase();
-			}
-
-			if (_isTypeOf(mobile, 'boolean')) {
-				item.mobile = mobile;
-			}
-		}
-
-		return item;
-	}
-
-	function _init(dataSrc) {
-		var data = {
-			url:             dataSrc.view.url,
-			baseUrl:         dataSrc.blog.homepageUrl,
-			searchUrl:       dataSrc.blog.searchUrl,
-			blogTitle:       _stripTags(dataSrc.blog.title),
-			pageTitle:       _stripTags(dataSrc.view.title),
-			featuredImage:   dataSrc.view.featuredImage || '',
-			pageDescription: _stripTags(dataSrc.view.description)
-		};
-
-		if (_view.QUERY) {
-			data.search = {
-				query: _stripTags(dataSrc.view.search.query)
-			};
-		}
-
-		if (_view.LABEL) {
-			data.search = {
-				label: _stripTags(dataSrc.view.search.label)
-			};
-		}
-
-		if (_view.ARCHIVE) {
-			data.archive = {
-				year: dataSrc.view.archive.year
-			};
-
-			if (dataSrc.view.archive.month) {
-				data.archive.month = dataSrc.view.archive.month;
-			}
-		}
-
-		_data     = JSON.stringify(data);
-		_isMobile = dataSrc.blog.isMobileRequest;
-		_isReady  = true;
-
-		_stack.forEach(_eval);
-	}
-
-	window.Dorothy = function() {
-		return {
-			is: function() {
-				var item = _map(arguments);
-
-				if (item) {
-					if (_isReady) {
-						_eval(item);
-					} else {
-						_stack.push(item);
-					}
-				}
-			}
-		};
+	/**
+	 * Blog view switches
+	 * @type {Object.<string, boolean>}
+	 */
+	var _view = {
+		ALL: true,
+		ITEM: false,
+		POST: false,
+		PAGE: false,
+		FEED: false,
+		HOME: false,
+		QUERY: false,
+		LABEL: false,
+		ERROR: false,
+		MOBILE: false,
+		SEARCH: false,
+		ARCHIVE: false
 	};
 
-	window.addEventListener('load', function () {
-		var dataSrc  = this._WidgetManager._GetAllData();
-		var isSearch = dataSrc.view.isSearch || false;
+	/**
+	 * Items to be evaluated after window load complete
+	 * @type {DorothyItem[]}
+	 */
+	var _queue = [];
 
-		_view = {
-			ITEM:    dataSrc.view.isSingleItem,
-			POST:    dataSrc.view.isPost,
-			PAGE:    dataSrc.view.isPage,
-			FEED:    dataSrc.view.isMultipleItems,
-			HOME:    dataSrc.view.isHomepage,
-			QUERY:   isSearch && !!dataSrc.view.search.query,
-			LABEL:   dataSrc.view.isLabelSearch,
-			ERROR:   dataSrc.view.isError,
-			SEARCH:  isSearch,
-			ARCHIVE: dataSrc.view.isArchive
+	/**
+	 * Evaluation of `DorothyItem` that could be executed
+	 * @param {DorothyItem} item
+	 */
+	function _exec(item) {
+		var isRunnable = false;
+		var pageTypesArr = item.pageTypes.split('|');
+
+		pageTypesArr.forEach(function (pageType) {
+			isRunnable = isRunnable || _view[pageType];
+		});
+
+		if (isRunnable && item.applyMobile || !_view.MOBILE) {
+			item.callbackFn(_data);
+		}
+	}
+
+	/**
+	 * Converts `dorothy` arguments to a `DorothyItem`
+	 * @param {!string} pageTypes
+	 * @param {!DorothyCallback} callbackFn
+	 * @param {boolean} [applyMobile=true]
+	 * @throws Throws an error if provided params contains not corresponding types
+	 * @returns {DorothyItem}
+	 */
+	function _pack(pageTypes, callbackFn, applyMobile) {
+		if (typeof pageTypes !== 'string') {
+			throw new Error('First param needs to be a `string`');
+		}
+
+		if (typeof callbackFn !== 'function') {
+			throw new Error('Second param needs to be a `function`');
+		}
+
+		if (applyMobile && typeof applyMobile !== 'boolean') {
+			throw new Error('Third param needs to be a `boolean`');
+		}
+
+		return {
+			pageTypes: pageTypes,
+			callbackFn: callbackFn,
+			applyMobile: applyMobile
 		};
+	}
 
-		_init(dataSrc);
+	/**
+	 * @alias dorothy
+	 * @param {!string} pageTypes - Pipe-delimited page types
+	 * @param {!DorothyCallback} callbackFn - Routine to execute
+	 * @param {boolean} [applyMobile=true] - Flag to enable or disable running on mobile requests
+	 * @throws Throws an error if provided params contains not corresponding types
+	 * @example
+	 * // Available page types:
+	 * // ALL, ITEM, POST, PAGE, FEED, HOME,
+	 * // QUERY, LABEL, ERROR, SEARCH, ARCHIVE
+	 *
+	 * // Single page-type condition
+	 * dorothy('HOME', function (data) {
+	 *   alert('Welcome to ' + data.blog.title + '!');
+	 * });
+	 *
+	 * // Multiple page-type conditions
+	 * dorothy('POST|PAGE', function (data) {
+	 *   alert('You are reading: "' + data.view.title + '".');
+	 * }, false);
+	 */
+	function _dorothy(pageTypes, callbackFn, applyMobile) {
+		var item = _pack(pageTypes, callbackFn, applyMobile);
+
+		if (_data !== null) {
+			_exec(item);
+		} else {
+			_queue.push(item);
+		}
+	}
+
+	window.dorothy = _dorothy;
+
+	window.addEventListener('load', function () {
+		_data = this._WidgetManager._GetAllData();
+
+		_view.SEARCH = _data.view.isSearch || false;
+		_view.ITEM = _data.view.isSingleItem;
+		_view.POST = _data.view.isPost;
+		_view.PAGE = _data.view.isPage;
+		_view.FEED = _data.view.isMultipleItems;
+		_view.HOME = _data.view.isHomepage;
+		_view.QUERY = _view.SEARCH && !!_data.view.search.query;
+		_view.LABEL = _data.view.isLabelSearch;
+		_view.ERROR = _data.view.isError;
+		_view.MOBILE = _data.blog.isMobileRequest;
+		_view.ARCHIVE = _data.view.isArchive;
+
+		_queue.forEach(_exec);
 	});
 }());
+
+/**
+ * Blog data from Blogger API
+ * @typedef BlogData
+ * @todo Search for complete documentation of `_WidgetManager.GetAllData()`
+ */
+
+/**
+ * @typedef DorothyItem
+ * @property {string} pageTypes
+ * @property {DorothyCallback} callbackFn
+ * @property {boolean} applyMobile
+ */
+
+/**
+ * @callback DorothyCallback
+ * @param {BlogData} data
+ */

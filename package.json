@@ -1,0 +1,22 @@
+{
+  "name": "dorothy",
+  "description": "A JavaScript plug-in to run code on specific page-type conditions for Blogger blogs.",
+  "version": "1.0.0",
+  "keywords": [
+    "blogger",
+    "javascript",
+    "plug-in"
+  ],
+  "repositories": [
+    {
+      "type": "git",
+      "url": "https://github.com/1e90ff/dorothy.git"
+    }
+  ],
+  "licenses": [
+    {
+      "name": "MIT",
+      "url": "https://choosealicense.com/licenses/mit/"
+    }
+  ]
+}
