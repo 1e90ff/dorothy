@@ -44,7 +44,7 @@
 			isRunnable = isRunnable || _view[pageType];
 		});
 
-		if (isRunnable && item.applyMobile || !_view.MOBILE) {
+		if (isRunnable && (item.applyMobile || !_view.MOBILE)) {
 			item.callbackFn(_data);
 		}
 	}

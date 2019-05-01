@@ -1,3 +1,2 @@
 # Dorothy
 
-Provided
