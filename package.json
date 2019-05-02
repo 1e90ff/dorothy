@@ -1,0 +1,27 @@
+{
+  "name": "dorothy",
+  "version": "1.0.0",
+  "description": "A JavaScript plug-in to run code on specific page-type conditions for Blogger blogs.",
+  "main": "dorothy.js",
+  "directories": {
+    "doc": "docs",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "./test/dorothy-test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/1e90ff/dorothy.git"
+  },
+  "keywords": [
+    "google-blogger",
+    "javascript-plugin"
+  ],
+  "author": "Ulises López",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/1e90ff/dorothy/issues"
+  },
+  "homepage": "https://github.com/1e90ff/dorothy#readme"
+}
