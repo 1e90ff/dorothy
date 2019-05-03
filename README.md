@@ -7,7 +7,7 @@ A simple way to condition your JS code execution based on page types for Blogger
 Add to your XML template the next script tag.
 
 ```xml
-<script src="dorothy/dorothy.js" />
+<script src="https://cdn.jsdelivr.net/gh/1e90ff/dorothy@1.0.0/dorothy.min.js" />
 ```
 
 ## Method
