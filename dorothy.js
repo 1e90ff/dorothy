@@ -1,9 +1,27 @@
+/**
+ * Blog data from Blogger API
+ * @typedef bloggerData
+ * @todo Search for complete documentation of `_WidgetManager.GetAllData()`
+ */
+
+/**
+ * @callback dFunction
+ * @param {bloggerData} data
+ */
+
+/**
+ * @typedef dItem
+ * @property {string} pageTypes
+ * @property {dFunction} callbackFn
+ * @property {boolean} applyMobile
+ */
+
 (function () {
 	'use strict';
 
 	/**
 	 * Blog data
-	 * @type {BlogData}
+	 * @type {bloggerData}
 	 */
 	var _data = null;
 
@@ -28,65 +46,70 @@
 
 	/**
 	 * Items to be evaluated after window load complete
-	 * @type {DorothyItem[]}
+	 * @type {dItem[]}
 	 */
 	var _queue = [];
 
 	/**
-	 * Evaluation of `DorothyItem` that could be executed
-	 * @param {DorothyItem} item
+	 * Evaluation of `dItem` that could be executed
+	 * @param {dItem} item
 	 */
-	function _exec(item) {
-		var isRunnable = false;
-		var pageTypesArr = item.pageTypes.split('|');
+	function _eval(item) {
+		var start = false;
+		var types = item.pageTypes.split('|');
 
-		pageTypesArr.forEach(function (pageType) {
-			isRunnable = isRunnable || _view[pageType];
+		types.forEach(function (type) {
+			start = start || _view[type];
 		});
 
-		if (isRunnable && (item.applyMobile || !_view.MOBILE)) {
+		if (start && (item.applyMobile || !_view.MOBILE)) {
 			item.callbackFn(_data);
 		}
 	}
 
 	/**
-	 * Converts `dorothy` arguments to a `DorothyItem`
-	 * @param {!string} pageTypes
-	 * @param {!DorothyCallback} callbackFn
-	 * @param {boolean} [applyMobile=true]
+	 * Transforms `dorothy` arguments into a `dItem`
+	 * @param {Array.<(string|dFunction|boolean)>} args
 	 * @throws Throws an error if provided params contains not corresponding types
-	 * @returns {DorothyItem}
+	 * @returns {dItem}
 	 */
-	function _pack(pageTypes, callbackFn, applyMobile) {
-		if (typeof pageTypes !== 'string') {
+	function _pack(args) {
+		var item = {
+			pageTypes: null,
+			callbackFn: null,
+			applyMobile: true
+		};
+
+		if (typeof args[0] === 'string') {
+			item.pageTypes = args[0].toUpperCase();
+		} else {
 			throw new Error('First param needs to be a `string`');
 		}
 
-		if (typeof callbackFn !== 'function') {
+		if (typeof args[1] === 'function') {
+			item.callbackFn = args[1];
+		} else {
 			throw new Error('Second param needs to be a `function`');
 		}
 
-		if (applyMobile && typeof applyMobile !== 'boolean') {
-			throw new Error('Third param needs to be a `boolean`');
+		if (typeof args[2] === 'boolean') {
+			item.applyMobile = args[2];
 		}
 
-		return {
-			pageTypes: pageTypes,
-			callbackFn: callbackFn,
-			applyMobile: applyMobile
-		};
+		return item;
 	}
 
 	/**
 	 * @alias dorothy
-	 * @param {!string} pageTypes - Pipe-delimited page types
-	 * @param {!DorothyCallback} callbackFn - Routine to execute
-	 * @param {boolean} [applyMobile=true] - Flag to enable or disable running on mobile requests
-	 * @throws Throws an error if provided params contains not corresponding types
+	 * @param {!string} pageTypes - Page type condition
+	 * @param {!dFunction} callbackFn - Routine to execute
+	 * @param {boolean} [applyMobile=true] - Enable or disable running on mobile requests
 	 * @example
 	 * // Available page types:
-	 * // ALL, ITEM, POST, PAGE, FEED, HOME,
-	 * // QUERY, LABEL, ERROR, SEARCH, ARCHIVE
+	 * // ALL,    ITEM,    POST,
+	 * // PAGE,   FEED,    HOME,
+	 * // QUERY,  LABEL,   ERROR,
+	 * // SEARCH, ARCHIVE
 	 *
 	 * // Single page-type condition
 	 * dorothy('HOME', function (data) {
@@ -98,13 +121,19 @@
 	 *   alert('You are reading: "' + data.view.title + '".');
 	 * }, false);
 	 */
-	function _dorothy(pageTypes, callbackFn, applyMobile) {
-		var item = _pack(pageTypes, callbackFn, applyMobile);
+	function _dorothy() {
+		var item;
 
-		if (_data !== null) {
-			_exec(item);
-		} else {
-			_queue.push(item);
+		try {
+			item = _pack(arguments);
+
+			if (_data === null) {
+				_queue.push(item);
+			} else {
+				_eval(item);
+			}
+		} catch (x) {
+			console.error(x);
 		}
 	}
 
@@ -125,25 +154,7 @@
 		_view.MOBILE = _data.blog.isMobileRequest;
 		_view.ARCHIVE = _data.view.isArchive;
 
-		_queue.forEach(_exec);
+		_queue.forEach(_eval);
 	});
 }());
-
-/**
- * Blog data from Blogger API
- * @typedef BlogData
- * @todo Search for complete documentation of `_WidgetManager.GetAllData()`
- */
-
-/**
- * @typedef DorothyItem
- * @property {string} pageTypes
- * @property {DorothyCallback} callbackFn
- * @property {boolean} applyMobile
- */
-
-/**
- * @callback DorothyCallback
- * @param {BlogData} data
- */
  
